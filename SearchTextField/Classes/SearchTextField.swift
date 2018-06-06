@@ -117,6 +117,11 @@ open class SearchTextField: UITextField {
     /// Set the results list's header
     open var resultsListHeader: UIView?
     
+    /// Set placeholder label
+    open var placeholderText:String = ""
+    
+    open var placeholderString: String?
+    
     ////////////////////////////////////////////////////////////////////////
     // Private implementation
     
@@ -130,6 +135,7 @@ open class SearchTextField: UITextField {
     fileprivate static let cellIdentifier = "APSearchTextFieldCell"
     fileprivate let indicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
     fileprivate var maxTableViewSize: CGFloat = 0
+    fileprivate var floatingPlaceholder: UILabel?
     
     fileprivate var filteredResults = [SearchTextFieldItem]()
     fileprivate var filterDataSource = [SearchTextFieldItem]() {
@@ -176,6 +182,8 @@ open class SearchTextField: UITextField {
             buildSearchTableView()
         }
         
+        buildFloatingPlaceholder()
+        
         // Create the loading indicator
         indicator.hidesWhenStopped = true
         self.rightView = indicator
@@ -185,6 +193,26 @@ open class SearchTextField: UITextField {
         var rightFrame = super.rightViewRect(forBounds: bounds)
         rightFrame.origin.x -= 5
         return rightFrame
+    }
+    
+    fileprivate func buildFloatingPlaceholder() {
+        if let placeholder = placeholderString {
+            if floatingPlaceholder == nil {
+                guard let frame = self.superview?.convert(self.frame, to: nil) else { return }
+                if self.text == "" {
+                    floatingPlaceholder = UILabel(frame: CGRect(x: 0, y: 0, width: frame.width, height: frame.height))
+                    floatingPlaceholder?.font = self.font
+                } else {
+                    floatingPlaceholder = UILabel(frame: CGRect(x: 0, y: -22, width: frame.width, height: frame.height))
+                    floatingPlaceholder?.font = UIFont.systemFont(ofSize: 12)
+                }
+                floatingPlaceholder?.textColor = .lightGray
+                floatingPlaceholder?.text = placeholder
+                floatingPlaceholder?.alpha = 1
+                //self.placeholder = ""
+                self.addSubview(floatingPlaceholder!)
+            }
+        }
     }
     
     // Create the filter table and shadow view
@@ -377,12 +405,29 @@ open class SearchTextField: UITextField {
             filter(forceShowAll: true)
         }
         placeholderLabel?.attributedText = nil
+        if self.text?.count == 0  && self.floatingPlaceholder != nil {
+            UIView.animate(withDuration: 0.3) {
+                let scale = 12.0 / (self.font?.pointSize)!
+                guard let frame = self.superview?.convert(self.frame, to: nil) else { return }
+                self.floatingPlaceholder?.transform = self.floatingPlaceholder!.transform.scaledBy(x: scale, y: scale)
+                self.floatingPlaceholder?.frame = CGRect(x: 0, y: -22, width: frame.width, height: frame.height)
+            }
+        }
     }
     
     @objc open func textFieldDidEndEditing() {
         clearResults()
         self.tableView?.reloadData()
         self.placeholderLabel?.attributedText = nil
+        
+        if self.text?.count == 0  && self.floatingPlaceholder != nil {
+            UIView.animate(withDuration: 0.3) {
+                guard let frame = self.superview?.convert(self.frame, to: nil) else { return }
+                let scale = (self.font?.pointSize)! / 12.0
+                self.floatingPlaceholder?.transform = self.floatingPlaceholder!.transform.scaledBy(x: scale, y: scale)
+                self.floatingPlaceholder?.frame = CGRect(x: 0, y: 0, width: frame.width, height: frame.height)
+            }
+        }
     }
     
     @objc open func textFieldDidEndEditingOnExit() {
